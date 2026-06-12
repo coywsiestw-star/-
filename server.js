@@ -95,10 +95,10 @@ app.post("/api/analyze", async (req, res) => {
 
         } else if (provider === "deepseek") {
             const url = "https://api.deepseek.com/chat/completions";
-            const promptText = `首先判断输入 "${foodName}" 是否是具体的单品食物或食材（如苹果、牛肉、生菜等）。如果是复杂的混合菜肴（如火锅、套餐），或者是泛指的类别，或非食物，请直接返回 JSON：{ "error": "NOT_SPECIFIC_FOOD", "message": "请输入具体的食物单品或食材进行分析，例如'牛肉'或'生菜'，系统不支持分析混合菜肴（如火锅）。" }。
-如果验证通过，请对食品 "${foodName}" 进行深度的微观分子及营养物质成分分析。你需要列出该食物的微观营养与活性成分。
+            const promptText = `请对食品 "${foodName}" 进行深度的微观分子及营养物质成分分析。如果是完全不相干的非食物词汇（如手机、汽车），请返回 JSON：{ "error": "NOT_SPECIFIC_FOOD", "message": "请输入具体的食物单品或食材进行分析。" }。
+如果是任何食物（包括单品、混合菜肴、泛指类别等），请直接尽力分析它的营养成分。
 你必须严格以 JSON 格式返回分析报告，不得包含任何 markdown 标记（如 \`\`\`json 等）。
-验证通过时，JSON 对象的格式必须严格与以下结构一致：
+验证通过时，JSON 对象的格式必须严格与以下结构一致，绝对不要在外层嵌套其他键：
 {
   "name": "${foodName}",
   "scientificName": "该食物的拉丁文学名，如 Sus scrofa domesticus",
@@ -144,6 +144,10 @@ app.post("/api/analyze", async (req, res) => {
             let parsedData;
             try {
                 parsedData = JSON.parse(textOutput);
+                // Safe unwrap if DeepSeek nested the object
+                if (parsedData && Object.keys(parsedData).length === 1 && typeof parsedData[Object.keys(parsedData)[0]] === 'object' && parsedData[Object.keys(parsedData)[0]] !== null && parsedData[Object.keys(parsedData)[0]].name) {
+                    parsedData = parsedData[Object.keys(parsedData)[0]];
+                }
             } catch(e) {
                 return res.status(500).json({ error: "DeepSeek 返回格式错误" });
             }
@@ -230,17 +234,11 @@ JSON 格式严格要求如下：
             const requestBody = {
                 model: "deepseek-chat",
                 messages: [
-                    { role: "system", content: "你是一个只能输出严格 JSON 数组格式的程序接口。" },
+                    { role: "system", content: "你是一个专业的临床营养师和 JSON 接口。你必须只返回一个严格的 JSON 对象，包含规定的五个类别数组键。" },
                     { role: "user", content: promptText }
                 ],
                 response_format: { type: "json_object" } 
-                // Note: DeepSeek JSON mode usually requires an object, but we ask for an array. 
-                // To be safe with DeepSeek JSON mode, we'll wrap it in an object.
             };
-
-            // DeepSeek JSON mode strictness fix
-            const dsPrompt = promptText + `\n\n注意：DeepSeek 的 json_object 模式要求返回对象，请确保返回最外层是一个包含 carbs, superfoods, protein, fat, other 这五个键的 JSON 对象。`;
-            requestBody.messages[1].content = dsPrompt;
 
             const apiResponse = await fetch(url, {
                 method: "POST",
@@ -262,9 +260,11 @@ JSON 格式严格要求如下：
             if (textOutput.endsWith("```")) textOutput = textOutput.slice(0, -3);
 
             let parsed = JSON.parse(textOutput.trim());
-            // Safe unwrap in case DeepSeek nested it
+            // Safe unwrap in case DeepSeek nested it inside a "recommendations" or "data" key
             if (parsed.recommendations && typeof parsed.recommendations === 'object' && !Array.isArray(parsed.recommendations)) {
                 parsed = parsed.recommendations;
+            } else if (parsed.data && typeof parsed.data === 'object' && !Array.isArray(parsed.data)) {
+                parsed = parsed.data;
             }
             return res.json(parsed);
         }
