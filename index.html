@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0d0d12">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+    <title>BioNutrient.AI - 食物微观物质与营养分析</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.12.0/tsparticles.bundle.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- tsParticles Background -->
+    <div id="tsparticles" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2; pointer-events: none;"></div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="toast-hidden">
+        <div class="toast-content">
+            <i data-lucide="alert-circle"></i>
+            <span id="toastMessage">这是一个提示信息</span>
+        </div>
+    </div>
+
+    <!-- Background Blur Decorative Blobs -->
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+    <div class="bg-blob blob-3"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i data-lucide="dna" class="neon-mint"></i>
+                </div>
+                <div class="logo-text">
+                    <span class="brand-title">BioNutrient</span>
+                    <span class="brand-sub">.AI</span>
+                </div>
+            </div>
+            <div class="header-controls">
+                <button class="settings-toggle-btn" id="btn-toggle-settings" title="配置 API Key">
+                    <i data-lucide="key"></i>
+                </button>
+                <div class="header-status">
+                    <span class="status-dot green" id="api-status-dot"></span>
+                    <span class="status-text" id="api-status-text">离线演示模式</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Settings Panel -->
+        <div class="settings-panel glass-card" id="settings-panel">
+            <div class="settings-content">
+                <div class="settings-info">
+                    <h4><i data-lucide="settings" class="neon-mint"></i> AI 模型接口配置</h4>
+                    <p>选择 API 提供商并输入你的 API Key。Key 将保存在本地浏览器的 LocalStorage 中，直接与官方接口通信。</p>
+                </div>
+                <div class="settings-form">
+                    <select id="select-api-provider" class="settings-select">
+                        <option value="gemini">Google Gemini</option>
+                        <option value="deepseek">DeepSeek (深度求索)</option>
+                    </select>
+                    <input type="password" id="input-api-key" placeholder="输入 API Key">
+                    <button class="settings-save-btn" id="btn-save-key">保存配置</button>
+                    <button class="settings-clear-btn" id="btn-clear-key" style="display: none;">清除 Key</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- Global Navigation -->
+            <nav class="app-global-nav">
+                <button class="global-nav-btn active" data-screen="screen-input">
+                    <i data-lucide="search"></i> 成分解析
+                </button>
+                <button class="global-nav-btn" data-screen="screen-recommend">
+                    <i data-lucide="compass"></i> 智能发现
+                </button>
+                <button class="global-nav-btn" data-screen="screen-plan">
+                    <i data-lucide="target"></i> 专属计划
+                </button>
+            </nav>
+            <!-- SCREEN 1: Welcome & Input -->
+            <section id="screen-input" class="screen active">
+                <div class="hero-section">
+                    <h1 class="hero-title">探寻食物的<span class="gradient-text">微观奥秘</span></h1>
+                    <p class="hero-subtitle">上传照片或输入食物名称，秒级解析宏量营养素、维生素以及特有活性分子</p>
+                </div>
+
+                <div class="input-panel glass-card">
+                    <!-- Tab Headers -->
+                    <div class="tabs">
+                        <!-- <button class="tab-btn" data-tab="upload">
+                            <i data-lucide="camera"></i> 智能拍照识别
+                        </button> -->
+                        <button class="tab-btn active" data-tab="search">
+                            <i data-lucide="search"></i> 文字快速搜索
+                        </button>
+                    </div>
+
+                    <!-- Tab Contents -->
+                    <div class="tab-contents">
+                        <!-- Upload Tab -->
+                        <!-- 
+                        <div id="tab-upload" class="tab-pane">
+                            <div class="drag-zone" id="drag-zone">
+                                <input type="file" id="file-input" accept="image/*" style="display: none;">
+                                <div class="zone-content">
+                                    <div class="upload-icon-wrapper">
+                                        <i data-lucide="upload-cloud"></i>
+                                    </div>
+                                    <h3>拖拽图片到这里，或 <span class="highlight-text">点击上传</span></h3>
+                                    <p class="upload-tip">支持 JPG, PNG 格式食物照片，AI 将进行多模态智能识别</p>
+                                </div>
+                            </div>
+                        </div>
+                        -->
+
+                        <!-- Search Tab -->
+                        <div id="tab-search" class="tab-pane active">
+                            <form id="search-form" class="search-bar-wrapper">
+                                <input type="text" id="search-input" placeholder="输入食物名称，例如：西兰花、蓝莓、西红柿..." autocomplete="off">
+                                <button type="submit" class="search-btn">
+                                    <span>开始分析</span>
+                                    <i data-lucide="arrow-right"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Quick Suggestions -->
+                    <div class="suggestions-wrapper">
+                        <span class="suggestion-label">热门推荐：</span>
+                        <div class="suggestion-tags">
+                            <button class="tag-btn" data-food="西兰花">
+                                <span class="tag-emoji">🥦</span> 西兰花 (西兰花酚)
+                            </button>
+                            <button class="tag-btn" data-food="蓝莓">
+                                <span class="tag-emoji">🫐</span> 蓝莓 (花青素)
+                            </button>
+                            <button class="tag-btn" data-food="番茄">
+                                <span class="tag-emoji">🍅</span> 番茄 (番茄红素)
+                            </button>
+                            <button class="tag-btn" data-food="牛肉">
+                                <span class="tag-emoji">🥩</span> 牛肉 (肌酸)
+                            </button>
+                            <button class="tag-btn" data-food="猪肉">
+                                <span class="tag-emoji">🐖</span> 猪肉 (维生素B1)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCREEN 2: Scanning & Processing -->
+            <section id="screen-loading" class="screen">
+                <div class="loading-panel glass-card">
+                    <div class="scanner-container">
+                        <div class="scanner-image-wrapper">
+                            <img src="" id="loading-preview" alt="Food Preview">
+                            <div class="scanner-placeholder" id="loading-placeholder">
+                                <i data-lucide="apple"></i>
+                            </div>
+                            <div class="scan-beam"></div>
+                        </div>
+                        <div class="scanner-ring"></div>
+                    </div>
+
+                    <div class="loading-text-wrapper">
+                        <h2 class="loading-title">深度微观解析中...</h2>
+                        <div class="loading-steps">
+                            <div class="step active" id="step-1">
+                                <i data-lucide="check-circle" class="step-icon"></i>
+                                <span class="step-text">智能检测食物主体结构...</span>
+                            </div>
+                            <div class="step" id="step-2">
+                                <i data-lucide="circle" class="step-icon"></i>
+                                <span class="step-text">匹配宏量营养素成分配比...</span>
+                            </div>
+                            <div class="step" id="step-3">
+                                <i data-lucide="circle" class="step-icon"></i>
+                                <span class="step-text">探针分析微量元素与维生素...</span>
+                            </div>
+                            <div class="step" id="step-4">
+                                <i data-lucide="circle" class="step-icon"></i>
+                                <span class="step-text">提取核心活性分子（植物化学物）...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCREEN 3: Dashboard Results -->
+            <section id="screen-dashboard" class="screen">
+                <!-- Dashboard Nav -->
+                <div class="dashboard-nav">
+                    <button class="back-btn" id="btn-back-to-scan">
+                        <i data-lucide="arrow-left"></i>
+                        <span>重新扫描/搜索</span>
+                    </button>
+                    <div class="food-identity-header">
+                        <h2 class="dashboard-food-name" id="display-food-name">西兰花</h2>
+                        <span class="food-scientific-name" id="display-scientific-name">Brassica oleracea var. italica</span>
+                    </div>
+                </div>
+
+                <!-- Dashboard Layout -->
+                <div class="dashboard-grid">
+                    
+                    <!-- Left Column: Visual Card -->
+                    <div class="dashboard-col-left">
+                        <div class="visual-card glass-card">
+                            <div class="card-glow"></div>
+                            <div class="food-img-container">
+                                <img src="" id="display-food-image" class="food-showcase-image" alt="Food Visual">
+                            </div>
+                            
+                            <!-- Nutrition Score Meter -->
+                            <div class="score-meter-box">
+                                <div class="score-circle-wrapper">
+                                    <svg class="score-svg" viewBox="0 0 100 100">
+                                        <circle class="score-track" cx="50" cy="50" r="42"></circle>
+                                        <circle class="score-progress" id="score-progress-bar" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"></circle>
+                                    </svg>
+                                    <div class="score-value">
+                                        <span class="score-num" id="display-score">96</span>
+                                        <span class="score-label">健康指数</span>
+                                    </div>
+                                </div>
+                                <div class="score-desc">
+                                    <h4 id="display-rating-title">推荐日常食用</h4>
+                                    <p id="display-rating-desc">富含天然强效抗氧化物，热量极低，是极佳的膳食纤维来源。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Detail Cards -->
+                    <div class="dashboard-col-right">
+                        
+                        <!-- Row 1: Macro-nutrients & Water -->
+                        <div class="detail-row row-two-cols">
+                            <!-- Macros Card -->
+                            <div class="glass-card detail-card" id="card-macros">
+                                <h3 class="card-title"><i data-lucide="pie-chart" class="title-icon"></i> 核心宏量成分 <span class="title-tip">每 100g 含量</span></h3>
+                                
+                                <div id="calories-badge-container" class="calories-badge" style="margin-bottom: 1.2rem; display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid transparent; transition: all 0.3s ease;">
+                                    <span style="display: flex; align-items: center; font-size: 0.95rem;"><i data-lucide="flame" style="width: 18px; margin-right: 6px;"></i> 热量 (每 100g)</span>
+                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <span id="calories-tag" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: bold;"></span>
+                                        <span style="font-weight: 700; font-size: 1.15rem; font-family: var(--font-display);" id="display-calories">-- kcal</span>
+                                    </div>
+                                </div>
+
+                                <div class="macros-container">
+                                    <!-- Carbs -->
+                                    <div class="macro-progress-box">
+                                        <div class="macro-info">
+                                            <span class="macro-label">碳水化合物</span>
+                                            <span class="macro-val" id="macro-carbs">6.6g</span>
+                                        </div>
+                                        <div class="bar-container">
+                                            <div class="bar-fill bg-carb" id="bar-carbs" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    <!-- Protein -->
+                                    <div class="macro-progress-box">
+                                        <div class="macro-info">
+                                            <span class="macro-label">蛋白质</span>
+                                            <span class="macro-val" id="macro-protein">2.8g</span>
+                                        </div>
+                                        <div class="bar-container">
+                                            <div class="bar-fill bg-protein" id="bar-protein" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    <!-- Fat -->
+                                    <div class="macro-progress-box">
+                                        <div class="macro-info">
+                                            <span class="macro-label">脂肪</span>
+                                            <span class="macro-val" id="macro-fat">0.4g</span>
+                                        </div>
+                                        <div class="bar-container">
+                                            <div class="bar-fill bg-fat" id="bar-fat" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Water / Hydration Card -->
+                            <div class="glass-card detail-card liquid-card" id="card-water">
+                                <h3 class="card-title"><i data-lucide="droplet" class="title-icon"></i> 水分占比</h3>
+                                <div class="liquid-box">
+                                    <div class="wave-container">
+                                        <div class="wave-bg"></div>
+                                        <div class="wave-overlay" id="water-wave" style="transform: translateY(100%);"></div>
+                                        <span class="liquid-percentage" id="display-water-percent">89.3%</span>
+                                    </div>
+                                    <div class="liquid-info">
+                                        <p>主要成分为细胞结合水，口感脆嫩，有利于营养的高效溶解与吸收。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Bioactive Compounds (Unique) -->
+                        <div class="detail-row">
+                            <div class="glass-card detail-card highlight-glow" id="card-compounds">
+                                <h3 class="card-title neon-text-glow">
+                                    <i data-lucide="sparkles" class="title-icon neon-mint"></i> 
+                                    核心活性物质 (植物化学物)
+                                </h3>
+                                <div class="compounds-grid" id="display-compounds">
+                                    <!-- Will be dynamically generated by JS -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 3: Vitamins & Minerals -->
+                        <div class="detail-row">
+                            <div class="glass-card detail-card" id="card-micros">
+                                <h3 class="card-title"><i data-lucide="shield-check" class="title-icon"></i> 微量元素与维生素 <span class="title-tip">每日推荐摄入量 (RDA) 占比</span></h3>
+                                <div class="micros-grid" id="display-micros">
+                                    <!-- Will be dynamically generated by JS -->
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCREEN 4: Smart Recommendation -->
+            <section id="screen-recommend" class="screen">
+                <div class="hero-section">
+                    <h1 class="hero-title">AI<span class="gradient-text">智能发现</span></h1>
+                    <p class="hero-subtitle">基于海量营养学数据，为您匹配最佳食材组合</p>
+                </div>
+                
+                <div class="filter-panel glass-card" style="margin-bottom: 2rem;">
+                    <!-- Dietary Preferences -->
+                    <div class="filter-group">
+                        <div class="filter-label"><i data-lucide="utensils"></i> 饮食风格</div>
+                        <div class="filter-tags">
+                            <span class="filter-tag">均衡饮食</span>
+                            <span class="filter-tag">低碳水</span>
+                            <span class="filter-tag">生酮饮食</span>
+                            <span class="filter-tag">高蛋白</span>
+                            <span class="filter-tag">地中海饮食</span>
+                            <span class="filter-tag">纯素食</span>
+                            <span class="filter-tag">抗炎饮食</span>
+                            <span class="filter-tag">原始人饮食</span>
+                            <span class="filter-tag">间歇性断食</span>
+                            <span class="filter-tag">无麸质</span>
+                            <span class="filter-tag">DASH饮食</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Population Needs -->
+                    <div class="filter-group">
+                        <div class="filter-label"><i data-lucide="users"></i> 人群特征</div>
+                        <div class="filter-tags">
+                            <span class="filter-tag">减脂人群</span>
+                            <span class="filter-tag">增肌人群</span>
+                            <span class="filter-tag">孕产期</span>
+                            <span class="filter-tag">控糖人群</span>
+                            <span class="filter-tag">肠胃敏感</span>
+                            <span class="filter-tag">心血管呵护</span>
+                            <span class="filter-tag">高压脑力族</span>
+                            <span class="filter-tag">熬夜修仙党</span>
+                            <span class="filter-tag">痛风/高尿酸</span>
+                            <span class="filter-tag">银发养生族</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Flavor Map -->
+                    <div class="filter-group">
+                        <div class="filter-label"><i data-lucide="map-pin"></i> 地域风味</div>
+                        <div class="filter-tags">
+                            <span class="filter-tag">中式清淡</span>
+                            <span class="filter-tag">川湘麻辣</span>
+                            <span class="filter-tag">日韩料理</span>
+                            <span class="filter-tag">欧美简餐</span>
+                            <span class="filter-tag">东南亚风味</span>
+                            <span class="filter-tag">广式煲汤</span>
+                            <span class="filter-tag">西北风味</span>
+                            <span class="filter-tag">墨西哥热辣</span>
+                            <span class="filter-tag">印度咖喱</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recommend-actions-container" style="text-align: center; margin-bottom: 2rem;">
+                    <button id="btn-generate-recommend" class="particle-btn" style="max-width: 400px; margin: 0 auto;">
+                        <span class="btn-text"><i data-lucide="sparkles"></i> 随机生成一些推荐组合</span>
+                    </button>
+                </div>
+
+                <!-- Recommend Loading -->
+                <div id="recommend-loading" class="recommend-loading hidden">
+                    <div class="ai-loader">
+                        <div class="ai-orb"></div><div class="ai-orb"></div><div class="ai-orb"></div><div class="ai-orb"></div>
+                    </div>
+                    <p class="loading-text-glow">AI 正在云端进行深度营养解码与多维匹配...</p>
+                </div>
+
+                <!-- Recommendations Kanban 5 Columns -->
+                <div id="recommend-kanban" class="recommend-kanban hidden">
+                    
+                    <!-- Column 1: Carbs -->
+                    <div class="kanban-column" id="col-carbs">
+                        <div class="kanban-header kanban-carbs">
+                            <i data-lucide="wheat"></i> 优质碳水
+                        </div>
+                        <div class="kanban-body"></div>
+                    </div>
+
+                    <!-- Column 2: Superfoods -->
+                    <div class="kanban-column" id="col-superfoods">
+                        <div class="kanban-header kanban-super">
+                            <i data-lucide="sparkles"></i> 超级食物
+                        </div>
+                        <div class="kanban-body"></div>
+                    </div>
+
+                    <!-- Column 3: Protein -->
+                    <div class="kanban-column" id="col-protein">
+                        <div class="kanban-header kanban-protein">
+                            <i data-lucide="beef"></i> 核心蛋白
+                        </div>
+                        <div class="kanban-body"></div>
+                    </div>
+
+                    <!-- Column 4: Fat -->
+                    <div class="kanban-column" id="col-fat">
+                        <div class="kanban-header kanban-fat">
+                            <i data-lucide="droplet"></i> 健康脂肪
+                        </div>
+                        <div class="kanban-body"></div>
+                    </div>
+
+                    <!-- Column 5: Other -->
+                    <div class="kanban-column" id="col-other">
+                        <div class="kanban-header"><i data-lucide="sparkles"></i> 营养补充</div>
+                        <div class="kanban-body"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCREEN 5: Plan -->
+            <section id="screen-plan" class="screen">
+                <div class="hero-section">
+                    <h1 class="hero-title">专属<span class="gradient-text">周期计划</span></h1>
+                    <p class="hero-subtitle">设定目标，AI为您量身定制每个阶段的饮食大纲</p>
+                </div>
+
+                <!-- Personalization Input Box -->
+                <div class="personalization-panel glass-card">
+                    <h3 class="card-title" style="margin-bottom: 1.5rem;"><i data-lucide="user-circle"></i> 基础数据</h3>
+                    
+                    <div class="input-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                        <div class="input-group stepper-group">
+                            <label>当前身高 (cm)</label>
+                            <div class="stepper-control">
+                                <button type="button" class="stepper-btn minus" onclick="stepInput('input-height', -1)"><i data-lucide="minus"></i></button>
+                                <input type="number" id="input-height" placeholder="175" class="glass-input stepper-input">
+                                <button type="button" class="stepper-btn plus" onclick="stepInput('input-height', 1)"><i data-lucide="plus"></i></button>
+                            </div>
+                        </div>
+                        <div class="input-group stepper-group">
+                            <label>当前体重 (kg)</label>
+                            <div class="stepper-control">
+                                <button type="button" class="stepper-btn minus" onclick="stepInput('input-weight', -1)"><i data-lucide="minus"></i></button>
+                                <input type="number" id="input-weight" placeholder="70" class="glass-input stepper-input">
+                                <button type="button" class="stepper-btn plus" onclick="stepInput('input-weight', 1)"><i data-lucide="plus"></i></button>
+                            </div>
+                        </div>
+                        <div class="input-group stepper-group">
+                            <label>目标体重 (kg)</label>
+                            <div class="stepper-control">
+                                <button type="button" class="stepper-btn minus" onclick="stepInput('input-target-weight', -1)"><i data-lucide="minus"></i></button>
+                                <input type="number" id="input-target-weight" placeholder="65" class="glass-input stepper-input">
+                                <button type="button" class="stepper-btn plus" onclick="stepInput('input-target-weight', 1)"><i data-lucide="plus"></i></button>
+                            </div>
+                        </div>
+                        <div class="input-group stepper-group">
+                            <label>期望周期 (月)</label>
+                            <div class="stepper-control">
+                                <button type="button" class="stepper-btn minus" onclick="stepInput('input-timeframe', -1)"><i data-lucide="minus"></i></button>
+                                <input type="number" id="input-timeframe" placeholder="3" class="glass-input stepper-input">
+                                <button type="button" class="stepper-btn plus" onclick="stepInput('input-timeframe', 1)"><i data-lucide="plus"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <script>
+                        function stepInput(id, delta) {
+                            const input = document.getElementById(id);
+                            let val = parseFloat(input.value);
+                            if (isNaN(val)) val = parseFloat(input.placeholder) || 0;
+                            input.value = Math.max(0, val + delta);
+                        }
+                    </script>
+
+                    <div class="input-group" style="margin-top: 1.5rem;">
+                        <label>专属饮食偏好</label>
+                        <div id="btn-open-tag-modal" class="glass-input tag-select-box" style="min-height: 50px; cursor: pointer; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 15px; transition: all 0.3s ease;">
+                            <span id="selected-tags-placeholder" style="color: rgba(255,255,255,0.4); font-size: 0.95rem; transition: color 0.3s;">尚未选择偏好标签，点击添加...</span>
+                        </div>
+                    </div>
+
+                    <div class="input-group" style="margin-top: 1.5rem;">
+                        <label>补充说明 (如：每周运动3次，每次40分钟)</label>
+                        <input type="text" id="input-notes" placeholder="选填..." class="glass-input" style="width: 100%;">
+                    </div>
+
+                </div>
+
+                <div class="recommend-actions-container" style="text-align: center; margin: 2rem 0;">
+                    <button id="btn-generate-plan" class="particle-btn" style="max-width: 400px; margin: 0 auto;">
+                        <span class="btn-text"><i data-lucide="target"></i> 一键生成全周期计划</span>
+                    </button>
+                </div>
+
+                <!-- Plan Loading -->
+                <div id="plan-loading" class="recommend-loading hidden">
+                    <div class="ai-loader">
+                        <div class="ai-orb"></div><div class="ai-orb"></div><div class="ai-orb"></div><div class="ai-orb"></div>
+                    </div>
+                    <p class="loading-text-glow">AI 正在为您生成科学周密的阶段性目标...</p>
+                </div>
+
+                <!-- Full Plan Dashboard -->
+                <div id="plan-dashboard" class="plan-dashboard hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2 class="dashboard-title" style="margin-bottom: 0;"><i data-lucide="map"></i> 您的专属周期计划</h2>
+                        <button id="btn-export-plan" class="particle-btn" style="padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.85rem; min-width: auto;">
+                            <span class="btn-text"><i data-lucide="download"></i> 保存为图片</span>
+                        </button>
+                    </div>
+                    
+                    <div class="plan-grid">
+                        <div class="plan-card macro-card">
+                            <div class="card-header"><i data-lucide="calendar-days"></i> 月度总目标</div>
+                            <div class="card-body" id="plan-monthly">生成中...</div>
+                        </div>
+                        <div class="plan-card macro-card">
+                            <div class="card-header"><i data-lucide="calendar"></i> 本周小目标</div>
+                            <div class="card-body" id="plan-weekly">生成中...</div>
+                        </div>
+                    </div>
+
+                    <div class="plan-card daily-card">
+                        <div class="card-header"><i data-lucide="sun"></i> 每日核心指标</div>
+                        <div class="card-body">
+                            <div class="metric-row">
+                                <div class="metric"><span class="label">建议热量:</span> <span class="value" id="daily-cals">--</span></div>
+                                <div class="metric"><span class="label">蛋白质:</span> <span class="value" id="daily-protein">--</span></div>
+                            </div>
+                            <div class="daily-summary" id="daily-summary"></div>
+                        </div>
+                    </div>
+
+                    <div class="meals-container" id="meals-container">
+                        <!-- Meals will be injected here -->
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>© 2026 BioNutrient.AI - 前端玻璃拟态交互原型开发示范</p>
+        </footer>
+    </div>
+
+    <!-- JS Logic -->
+    <script type="module" src="app.js"></script>
+
+    <!-- Tag Selection Modal -->
+    <div id="tag-selection-modal" class="modal-overlay">
+        <div class="modal-content glass-card" style="background: rgba(15, 15, 20, 0.95); border: 1px solid rgba(16, 185, 129, 0.3); box-shadow: 0 0 40px rgba(16, 185, 129, 0.15);">
+            <div class="modal-header">
+                <h2 style="text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);"><i data-lucide="settings-2"></i> 定制专属偏好</h2>
+                <button id="btn-close-tag-modal" class="modal-close-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body filter-panel" style="display: flex; flex-direction: column; gap: 1.5rem; padding: 1rem 0;">
+                <!-- Dietary Preferences -->
+                    <div class="filter-group">
+                        <div class="filter-label"><i data-lucide="utensils"></i> 饮食风格</div>
+                        <div class="filter-tags">
+                            <span class="filter-tag">均衡饮食</span>
+                            <span class="filter-tag">低碳水</span>
+                            <span class="filter-tag">生酮饮食</span>
+                            <span class="filter-tag">高蛋白</span>
+                            <span class="filter-tag">地中海饮食</span>
+                            <span class="filter-tag">纯素食</span>
+                            <span class="filter-tag">抗炎饮食</span>
+                            <span class="filter-tag">原始人饮食</span>
+                            <span class="filter-tag">间歇性断食</span>
+                            <span class="filter-tag">无麸质</span>
+                            <span class="filter-tag">DASH饮食</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Population Needs -->
+                    <div class="filter-group">
+                        <div class="filter-label"><i data-lucide="users"></i> 人群特征</div>
+                        <div class="filter-tags">
+                            <span class="filter-tag">减脂人群</span>
+                            <span class="filter-tag">增肌人群</span>
+                            <span class="filter-tag">孕产期</span>
+                            <span class="filter-tag">控糖人群</span>
+                            <span class="filter-tag">肠胃敏感</span>
+                            <span class="filter-tag">心血管呵护</span>
+                            <span class="filter-tag">高压脑力族</span>
+                            <span class="filter-tag">熬夜修仙党</span>
+                            <span class="filter-tag">痛风/高尿酸</span>
+                            <span class="filter-tag">银发养生族</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Flavor Map -->
+                    <div class="filter-group">
+                        <div class="filter-label"><i data-lucide="map-pin"></i> 地域风味</div>
+                        <div class="filter-tags">
+                            <span class="filter-tag">中式清淡</span>
+                            <span class="filter-tag">川湘麻辣</span>
+                            <span class="filter-tag">日韩料理</span>
+                            <span class="filter-tag">欧美简餐</span>
+                            <span class="filter-tag">东南亚风味</span>
+                            <span class="filter-tag">广式煲汤</span>
+                            <span class="filter-tag">西北风味</span>
+                            <span class="filter-tag">墨西哥热辣</span>
+                            <span class="filter-tag">印度咖喱</span>
+                        </div>
+                    </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-confirm-tags" class="particle-btn" style="width: 100%;">
+                    <span class="btn-text">确认并返回</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
