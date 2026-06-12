@@ -2135,6 +2135,9 @@ textarea.glass-input {
     border-radius: 12px;
     overflow: hidden;
     transition: all 0.3s ease;
+    width: 100%; /* Ensure it spans full width of container */
+    max-width: 200px; /* Limit max width so it doesn't look stretched on mobile */
+    margin: 0 auto; /* Center it */
 }
 
 .stepper-control:focus-within {
@@ -2152,21 +2155,27 @@ textarea.glass-input {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0; /* Prevent shrinking on small screens */
+    width: 44px; /* Fixed touch target size for mobile */
+    height: 44px;
 }
 
-.stepper-btn:hover {
+.stepper-btn:hover, .stepper-btn:active {
     color: var(--neon-mint);
     background: rgba(255, 255, 255, 0.05);
 }
 
 .stepper-input {
     flex: 1;
+    min-width: 0; /* Important for flex children to allow shrinking */
+    width: 100%;
     border: none !important;
     background: transparent !important;
     text-align: center;
     padding: 0.8rem 0 !important;
     border-radius: 0 !important;
     -moz-appearance: textfield; /* Firefox */
+    font-size: 1rem;
 }
 
 /* Hide default number arrows */
