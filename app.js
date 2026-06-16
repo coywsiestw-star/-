@@ -1263,7 +1263,8 @@ function renderDashboard(data, customImageSrc) {
 
     // Render Vitamins & Minerals
     elements.microsContainer.innerHTML = '';
-    data.micros.forEach((micro, idx) => {
+    const micros = data.micros || [];
+    micros.forEach((micro, idx) => {
         const card = document.createElement('div');
         card.className = 'micro-card';
         card.innerHTML = `

@@ -94,6 +94,9 @@ app.post("/api/analyze", async (req, res) => {
             return res.json(parsedData);
 
         } else if (provider === "deepseek") {
+            if (imageSrc) {
+                return res.status(400).json({ error: "NOT_SPECIFIC_FOOD:DeepSeek 引擎暂不支持图片识别，请手动打字搜索，或在设置中切换回 Gemini 引擎。" });
+            }
             const url = "https://api.deepseek.com/chat/completions";
             const promptText = `请对食品 "${foodName}" 进行深度的微观分子及营养物质成分分析。如果是完全不相干的非食物词汇（如手机、汽车），请返回 JSON：{ "error": "NOT_SPECIFIC_FOOD", "message": "请输入具体的食物单品或食材进行分析。" }。
 如果是任何食物（包括单品、混合菜肴、泛指类别等），请直接尽力分析它的营养成分。
