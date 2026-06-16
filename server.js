@@ -98,9 +98,8 @@ app.post("/api/analyze", async (req, res) => {
                 return res.status(400).json({ error: "NOT_SPECIFIC_FOOD:DeepSeek 引擎暂不支持图片识别，请手动打字搜索，或在设置中切换回 Gemini 引擎。" });
             }
             const url = "https://api.deepseek.com/chat/completions";
-            const promptText = `请对食品 "${foodName}" 进行深度的微观分子及营养物质成分分析。如果是完全不相干的非食物词汇（如手机、汽车），请返回 JSON：{ "error": "NOT_SPECIFIC_FOOD", "message": "请输入具体的食物单品或食材进行分析。" }。
-如果是任何食物（包括单品、混合菜肴、泛指类别等），请直接尽力分析它的营养成分。
-你必须严格以 JSON 格式返回分析报告，不得包含任何 markdown 标记（如 \`\`\`json 等）。
+            const promptText = `请对食品或物品 "${foodName}" 进行深度的微观分子及营养物质成分分析。如果是任何食物（包括单品、混合菜肴、泛指类别等），请尽力分析它的营养成分。如果你认为这完全不是食物，请发挥想象力，编造或强行分析它的“化学成分”，也必须返回正常的营养结构。
+你必须严格以 JSON 格式返回分析报告，不得包含任何 markdown 标记（如 \`\`\`json 等）。绝对不要返回 error 字段。
 验证通过时，JSON 对象的格式必须严格与以下结构一致，绝对不要在外层嵌套其他键：
 {
   "name": "${foodName}",
